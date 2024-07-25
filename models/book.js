@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const { Schema, model } = mongoose;
 
 const bookSchema = new Schema({
 	author: {
@@ -13,6 +13,7 @@ const bookSchema = new Schema({
 	ISBN: {
 		type: String,
 		required: true,
+		unique: true,
 	},
 });
 

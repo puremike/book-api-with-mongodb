@@ -1,20 +1,34 @@
-const books = require('../data');
+const bookSchema = require('../models/book.js');
 
-const getBooks = (req, res) => {
-	res.status(202).json({
-		status: 'success',
-		message: 'All books retrieved successfully',
-		length: books.length,
-		data: {
-			books,
-		},
-	});
+// With MongoDB
+
+const createBook = async (req, res) => {
+	try {
+		const { name, author, ISBN } = req.body;
+		if (!name || !author || !ISBN) {
+			return res.status(400).json({
+				status: 'error',
+				message: 'All fields are required',
+			});
+		}
+		const newBook = await new bookSchema(req.body).save();
+		res.status(200).json({
+			status: 'Success',
+			message: 'Book created successfully',
+			data: newBook,
+		});
+	} catch (error) {
+		res.status(400).json({
+			status: 'error',
+			message: `Error creating book, ${error.message}`,
+		});
+	}
 };
 
-const getSingleBook = (req, res) => {
+const getSingleBook = async (req, res) => {
 	try {
 		const { id } = req.params;
-		const book = books.find((book) => book.id === parseInt(id));
+		const book = await bookSchema.findById(id);
 
 		if (!book) {
 			throw new Error('Invalid book ID');
@@ -34,60 +48,28 @@ const getSingleBook = (req, res) => {
 	}
 };
 
-const createBook = (req, res) => {
-	try {
-		const { name, author, ISBN } = req.body;
-		if (!name || !author || !ISBN) {
-			throw new Error('All fields are required');
-		}
-		const newBook = { id: books.length + 1 || req.body.id, ...req.body };
-		books.push(newBook);
-		res.status(201).json({
-			status: 'success',
-			message: 'Book created successfully',
-			data: {
-				book: newBook,
-			},
-		});
-	} catch (error) {
-		res.status(400).json({
-			status: 'error',
-			message: error.message,
-		});
-	}
+const getBooks = async (req, res) => {
+	const { id } = req.params;
+	const books = await bookSchema.find();
+	res.status(202).json({
+		status: 'success',
+		message: 'All books retrieved successfully',
+		length: books.length,
+		data: books,
+	});
 };
 
-const deleteBook = (req, res) => {
+const updateBook = async (req, res) => {
 	try {
 		const { id } = req.params;
-		const bookToDeleteIndex = books.findIndex(
-			(book) => book.id === parseInt(id)
-		);
-		if (bookToDeleteIndex === -1) {
+		const bookID = await bookSchema.findById(id);
+		if (!bookID) {
 			throw new Error('Invalid book ID');
 		}
-		books.splice(bookToDeleteIndex, 1);
-		res.status(202).json({
-			status: 'Success',
-			message: `Book was deleted successfully`,
+		const newBook = req.body;
+		const updatedBook = await bookSchema.findByIdAndUpdate(id, newBook, {
+			new: true,
 		});
-	} catch (error) {
-		res.json({
-			status: 'failed',
-			error: error.message,
-		});
-	}
-};
-
-const updateBook = (req, res) => {
-	try {
-		const id = parseInt(req.params.id);
-		const bookToUpdateIndex = books.findIndex((book) => book.id === id);
-		if (bookToUpdateIndex === -1) {
-			throw new Error('Invalid book ID');
-		}
-		const updatedBook = { id: id, ...req.body };
-		books[bookToUpdateIndex] = updatedBook;
 		res.status(202).json({
 			status: 'Success',
 			message: `Book, ${req.body.name} updated successfully`,
@@ -97,6 +79,27 @@ const updateBook = (req, res) => {
 		res.status(400).json({
 			status: 'error',
 			message: error.message,
+		});
+	}
+};
+
+const deleteBook = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const bookID = await bookSchema.findById(id);
+		if (!bookID) {
+			throw new Error('Invalid book ID');
+		}
+		const deletedBook = await bookSchema.findByIdAndDelete(id);
+		res.status(202).json({
+			status: 'Success',
+			book: deletedBook,
+			message: `Book was deleted successfully`,
+		});
+	} catch (error) {
+		res.json({
+			status: 'failed',
+			error: error.message,
 		});
 	}
 };
