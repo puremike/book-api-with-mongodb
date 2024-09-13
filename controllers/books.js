@@ -1,106 +1,88 @@
 const bookSchema = require('../models/book.js');
+const notFoundErr = require('../errors/notfounderror');
 
-// With MongoDB
+// CRUD
 
-const createBook = async (req, res) => {
+// Create Book
+const createBook = async (req, res, next) => {
 	try {
-		const { name, author, ISBN } = req.body;
-		if (!name || !author || !ISBN) {
-			return res.status(400).json({
-				status: 'error',
-				message: 'All fields are required',
-			});
-		}
 		const newBook = await new bookSchema(req.body).save();
-		res.status(200).json({
+		return res.status(200).json({
 			status: 'Success',
 			message: 'Book created successfully',
 			data: newBook,
 		});
 	} catch (error) {
-		res.status(400).json({
-			status: 'error',
-			message: `Error creating book, ${error.message}`,
-		});
+		next(error);
 	}
 };
 
-const getSingleBook = async (req, res) => {
+const getSingleBook = async (req, res, next) => {
 	try {
-		const { id } = req.params;
+		const {id} = req.params;
 		const book = await bookSchema.findById(id);
 
 		if (!book) {
-			throw new Error('Invalid book ID');
+			return notFoundErr(id, next);
 		}
-		res.status(202).json({
+		return res.status(201).json({
 			status: 'success',
 			message: 'Book retrieved successfully',
-			data: {
-				book,
-			},
+			data: book,
 		});
 	} catch (error) {
-		res.status(400).json({
-			status: 'error',
-			message: error.message,
-		});
+		next(error);
 	}
 };
 
 const getBooks = async (req, res) => {
-	const { id } = req.params;
-	const books = await bookSchema.find();
-	res.status(202).json({
-		status: 'success',
-		message: 'All books retrieved successfully',
-		length: books.length,
-		data: books,
-	});
+	try {
+		const {id} = req.params;
+		const books = await bookSchema.find();
+		return res.status(201).json({
+			status: 'success',
+			message: 'All books retrieved successfully',
+			length: books.length,
+			data: books,
+		});
+	} catch (error) {
+		return res.status(404).send('Books not found', error);
+	}
 };
 
-const updateBook = async (req, res) => {
+const updateBook = async (req, res, next) => {
 	try {
-		const { id } = req.params;
-		const bookID = await bookSchema.findById(id);
-		if (!bookID) {
-			throw new Error('Invalid book ID');
-		}
+		const {id} = req.params;
 		const newBook = req.body;
 		const updatedBook = await bookSchema.findByIdAndUpdate(id, newBook, {
 			new: true,
 		});
-		res.status(202).json({
+		if (!updatedBook) {
+			return notFoundErr(id, next);
+		}
+		return res.status(201).json({
 			status: 'Success',
 			message: `Book, ${req.body.name} updated successfully`,
 			book: updatedBook,
 		});
 	} catch (error) {
-		res.status(400).json({
-			status: 'error',
-			message: error.message,
-		});
+		next(error);
 	}
 };
 
-const deleteBook = async (req, res) => {
+const deleteBook = async (req, res, next) => {
 	try {
-		const { id } = req.params;
-		const bookID = await bookSchema.findById(id);
-		if (!bookID) {
-			throw new Error('Invalid book ID');
-		}
+		const {id} = req.params;
 		const deletedBook = await bookSchema.findByIdAndDelete(id);
-		res.status(202).json({
+		if (!deletedBook) {
+			return notFoundErr(id, next);
+		}
+		return res.status(203).json({
 			status: 'Success',
-			book: deletedBook,
 			message: `Book was deleted successfully`,
 		});
 	} catch (error) {
-		res.json({
-			status: 'failed',
-			error: error.message,
-		});
+		next(error);
 	}
 };
 
